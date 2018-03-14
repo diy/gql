@@ -169,13 +169,25 @@ export function buildASTSchema( // eslint-disable-line complexity
   // error for multi same name typeDef
   Object.keys(nodeMapWithAllReferences).forEach((name) => {
     if (nodeMapWithAllReferences[name].length > 1) {
-      errors.push(
-        newGQLError(
-          `Schema must contain unique named types but contains multiple types named "${name}".`,
-          nodeMapWithAllReferences[name].map((typeDefAST) => typeDefAST.name),
-          SEVERITY.error,
-        ),
-      );
+      if (name === 'Query') {
+        // merge multiple query definitions
+        nodeMapWithAllReferences.Query = nodeMapWithAllReferences.Query.reduce((acc, query) =>
+          Object.assign(acc, {
+            interfaces: [...acc.interfaces, ...query.interfaces],
+            directives: [...acc.directives, ...query.directives],
+            fields: [...acc.fields, ...query.fields],
+            // Note: not merging locations as it would not make sense anyway
+          }),
+        );
+      } else {
+        errors.push(
+          newGQLError(
+            `Schema must contain unique named types but contains multiple types named "${name}".`,
+            nodeMapWithAllReferences[name].map((typeDefAST) => typeDefAST.name),
+            SEVERITY.error,
+          ),
+        );
+      }
     }
   });
 

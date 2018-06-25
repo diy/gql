@@ -114,6 +114,16 @@ function buildWrappedType(
   return (innerType: any);
 }
 
+function mergeObjectTypeDefinitions(acc, objectTypeDefinition) {
+  return Object.assign(acc, {
+    interfaces: [...acc.interfaces, ...objectTypeDefinition.interfaces],
+    directives: [...acc.directives, ...objectTypeDefinition.directives],
+    fields: [...acc.fields, ...objectTypeDefinition.fields],
+    // Note: not merging locations as it would not make sense anyway
+  });
+}
+
+
 export function buildASTSchema( // eslint-disable-line complexity
   ast: DocumentNode,
 ): { schema: GQLSchema, errors: Array<GQLError> } {
@@ -170,15 +180,11 @@ export function buildASTSchema( // eslint-disable-line complexity
   Object.keys(nodeMapWithAllReferences).forEach((name) => {
     if (nodeMapWithAllReferences[name].length > 1) {
       if (name === 'Query') {
-        // merge multiple query definitions
-        nodeMapWithAllReferences.Query = nodeMapWithAllReferences.Query.reduce((acc, query) =>
-          Object.assign(acc, {
-            interfaces: [...acc.interfaces, ...query.interfaces],
-            directives: [...acc.directives, ...query.directives],
-            fields: [...acc.fields, ...query.fields],
-            // Note: not merging locations as it would not make sense anyway
-          }),
-        );
+        nodeMapWithAllReferences.Query =
+          nodeMapWithAllReferences.Query.reduce(mergeObjectTypeDefinitions);
+      } else if (name === 'Mutation') {
+        nodeMapWithAllReferences.Mutation =
+          nodeMapWithAllReferences.Mutation.reduce(mergeObjectTypeDefinitions);
       } else {
         errors.push(
           newGQLError(
